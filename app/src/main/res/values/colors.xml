@@ -1,5 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#FF000000</color>
-    <color name="white">#FFFFFFFF</color>
+    <color name="purple_500">#AF88FF</color>
+    <color name="purple_700">#4502FA</color>
+    <color name="purple_200">#100808</color>
+    <color name="teal_200">#1BD3C2</color>
+    <color name="teal_700">#03D0CE</color>
+    <color name="light_background">#FFFFFF</color> <!-- светлый фон -->
+    <color name="dark_background">#121212</color>   <!-- тёмный фон -->
+    <color name="text_color_light">#000000</color> <!-- тёмный текст для светлой темы -->
+
 </resources>

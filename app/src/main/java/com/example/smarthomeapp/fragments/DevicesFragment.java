@@ -17,12 +17,9 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.Toast;
-import android.speech.RecognitionListener;
-import android.speech.SpeechRecognizer;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -41,11 +38,6 @@ import java.util.Locale;
 
 public class DevicesFragment extends Fragment {
 
-    private SpeechRecognizer speechRecognizer;
-    private Intent speechRecognizerIntent;
-    private boolean isListening = false;
-
-
     private RecyclerView devicesRecyclerView;
     private Button addDeviceButton;
     private Button voiceCommandButton;
@@ -61,8 +53,6 @@ public class DevicesFragment extends Fragment {
     private final Runnable timerRunnable = new Runnable() {
         @Override
         public void run() {
-            adapter.notifyDataSetChanged();
-
             for (Device device : deviceList) {
                 if (device.isOn() && device.isTimerExpired()) {
                     device.setOn(false);
@@ -90,8 +80,6 @@ public class DevicesFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
 
-        initSpeechRecognition();
-
         View view = inflater.inflate(R.layout.fragment_devices, container, false);
 
         devicesRecyclerView = view.findViewById(R.id.devicesRecyclerView);
@@ -102,7 +90,23 @@ public class DevicesFragment extends Fragment {
         userManager = new UserManager(requireContext());
 
         deviceList = new ArrayList<>();
-        adapter = new DeviceAdapter(deviceList);
+
+        // Здесь создаем адаптер с двумя слушателями: удаление и переключение
+        adapter = new DeviceAdapter(deviceList,
+                position -> {
+                    deviceList.remove(position);
+                    adapter.notifyItemRemoved(position);
+                    adapter.notifyItemRangeChanged(position, deviceList.size());
+                    saveDevices();
+                },
+                (position, isOn) -> {
+                    Device device = deviceList.get(position);
+                    device.setOn(isOn);
+                    adapter.notifyItemChanged(position);
+                    saveDevices();
+                }
+        );
+
         devicesRecyclerView.setLayoutManager(new LinearLayoutManager(getContext()));
         devicesRecyclerView.setAdapter(adapter);
 
@@ -114,18 +118,12 @@ public class DevicesFragment extends Fragment {
         voiceCommandButton.setOnClickListener(v -> startVoiceRecognition());
 
         return view;
-
     }
 
     @Override
     public void onDestroyView() {
         super.onDestroyView();
         handler.removeCallbacks(timerRunnable);
-        if (speechRecognizer != null) {
-            speechRecognizer.destroy();
-            speechRecognizer = null;
-        }
-
     }
 
     private void showDevicePickerDialog() {
@@ -222,63 +220,25 @@ public class DevicesFragment extends Fragment {
     }
 
     private void handleVoiceCommand(String command) {
+        boolean matched = false;
         for (Device device : deviceList) {
             String name = device.getName().toLowerCase();
 
             if (command.contains("включи") && command.contains(name)) {
                 device.setOn(true);
                 Toast.makeText(getContext(), "Включено: " + device.getName(), Toast.LENGTH_SHORT).show();
+                matched = true;
             } else if (command.contains("выключи") && command.contains(name)) {
                 device.setOn(false);
                 Toast.makeText(getContext(), "Выключено: " + device.getName(), Toast.LENGTH_SHORT).show();
+                matched = true;
             }
+        }
+        if (!matched) {
+            Toast.makeText(getContext(), "Команда не распознана: " + command, Toast.LENGTH_SHORT).show();
         }
 
         adapter.notifyDataSetChanged();
         saveDevices();
     }
-    private void initSpeechRecognition() {
-        if (SpeechRecognizer.isRecognitionAvailable(requireContext())) {
-            speechRecognizer = SpeechRecognizer.createSpeechRecognizer(requireContext());
-            speechRecognizerIntent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
-            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
-            speechRecognizerIntent.putExtra(RecognizerIntent.EXTRA_LANGUAGE, "ru-RU");
-
-            speechRecognizer.setRecognitionListener(new RecognitionListener() {
-                @Override public void onReadyForSpeech(Bundle params) {}
-                @Override public void onBeginningOfSpeech() {}
-                @Override public void onRmsChanged(float rmsdB) {}
-                @Override public void onBufferReceived(byte[] buffer) {}
-                @Override public void onEndOfSpeech() {}
-                @Override public void onError(int error) { restartListening(); }
-
-                @Override
-                public void onResults(Bundle results) {
-                    ArrayList<String> matches = results.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
-                    if (matches != null && !matches.isEmpty()) {
-                        handleVoiceCommand(matches.get(0).toLowerCase(Locale.ROOT));
-                    }
-                    restartListening();
-                }
-
-                @Override public void onPartialResults(Bundle partialResults) {}
-                @Override public void onEvent(int eventType, Bundle params) {}
-            });
-
-            startListening();
-        }
-    }
-    private void startListening() {
-        if (!isListening && speechRecognizer != null) {
-            isListening = true;
-            speechRecognizer.startListening(speechRecognizerIntent);
-        }
-    }
-
-    private void restartListening() {
-        isListening = false;
-        handler.postDelayed(this::startListening, 1000);
-    }
-
-
 }

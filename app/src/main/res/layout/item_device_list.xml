@@ -19,8 +19,18 @@
         android:layout_weight="1"
         android:layout_height="wrap_content"
         android:text="Device Name"
+        android:textColor="#0FDE23"
         android:textSize="16sp"
         android:layout_marginStart="8dp" />
+    <ImageButton
+        android:id="@+id/deleteDeviceButton"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@android:drawable/ic_menu_delete"
+        android:contentDescription="Удалить устройство"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:tint="@android:color/holo_red_dark" />
+
 
     <Switch
         android:id="@+id/deviceSwitch"

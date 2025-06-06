@@ -9,6 +9,7 @@
         android:id="@+id/currentUserTextView"
         android:text="Текущий аккаунт:"
         android:textSize="18sp"
+        android:textColor="#0FDE23"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
 
@@ -16,11 +17,13 @@
         android:id="@+id/addUserButton"
         android:text="Добавить аккаунт"
         android:layout_width="match_parent"
+        android:textColor="#0FDE23"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/userListView"
         android:layout_width="match_parent"
+        android:textColor="#0FDE23"
         android:layout_height="wrap_content" />
 </LinearLayout>

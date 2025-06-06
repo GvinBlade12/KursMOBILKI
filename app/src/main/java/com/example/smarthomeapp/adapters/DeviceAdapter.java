@@ -4,6 +4,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.CompoundButton;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -20,9 +21,25 @@ import java.util.concurrent.TimeUnit;
 public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder> {
 
     private List<Device> deviceList;
+    private OnDeviceDeleteListener deleteListener;
+    private OnDeviceSwitchListener switchListener;
 
-    public DeviceAdapter(List<Device> deviceList) {
+    // Интерфейс для обработки удаления устройства
+    public interface OnDeviceDeleteListener {
+        void onDeviceDelete(int position);
+    }
+
+    // Интерфейс для обработки переключения устройства
+    public interface OnDeviceSwitchListener {
+        void onDeviceSwitch(int position, boolean isOn);
+    }
+
+    // Конструктор с передачей слушателей
+    public DeviceAdapter(List<Device> deviceList, OnDeviceDeleteListener deleteListener,
+                         OnDeviceSwitchListener switchListener) {
         this.deviceList = deviceList;
+        this.deleteListener = deleteListener;
+        this.switchListener = switchListener;
     }
 
     public static class DeviceViewHolder extends RecyclerView.ViewHolder {
@@ -30,6 +47,7 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceView
         Switch powerSwitch;
         ImageView iconImageView;
         TextView statusTextView;
+        ImageButton deleteButton;
 
         public DeviceViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -37,6 +55,7 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceView
             powerSwitch = itemView.findViewById(R.id.deviceSwitch);
             iconImageView = itemView.findViewById(R.id.deviceIcon);
             statusTextView = itemView.findViewById(R.id.statusTextView);
+            deleteButton = itemView.findViewById(R.id.deleteDeviceButton);
         }
     }
 
@@ -53,24 +72,22 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceView
         Device device = deviceList.get(position);
         holder.nameTextView.setText(device.getName());
 
-        // Сначала сбрасываем слушатель, чтобы не вызвать бесконечный цикл при setChecked
+        // Отключаем слушатель перед изменением состояния, чтобы избежать рекурсии
         holder.powerSwitch.setOnCheckedChangeListener(null);
         holder.powerSwitch.setChecked(device.isOn());
 
-        holder.powerSwitch.setOnCheckedChangeListener((CompoundButton buttonView, boolean isChecked) -> {
-            device.setOn(isChecked);
-
-            // Если включаем, можно задать таймер (например, 5 минут)
-            // Здесь логика таймера может быть внешней или внутри устройства — добавь если нужно
-
-            notifyItemChanged(position);
+        // Устанавливаем слушатель, который сообщает наружу о смене состояния
+        holder.powerSwitch.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (switchListener != null) {
+                switchListener.onDeviceSwitch(position, isChecked);
+            }
         });
 
-        // Подставляем иконку по названию устройства
+        // Иконка
         int iconResId = getIconForDeviceName(device.getName());
         holder.iconImageView.setImageResource(iconResId);
 
-        // Отображаем таймер, если устройство включено и осталось время
+        // Таймер и статус
         if (device.isOn() && device.getRemainingTimeSeconds() > 0) {
             String timeLeft = formatTime(device.getRemainingTimeSeconds());
             holder.statusTextView.setText("Осталось: " + timeLeft);
@@ -78,6 +95,13 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceView
         } else {
             holder.statusTextView.setVisibility(View.GONE);
         }
+
+        // Кнопка удаления
+        holder.deleteButton.setOnClickListener(v -> {
+            if (deleteListener != null) {
+                deleteListener.onDeviceDelete(position);
+            }
+        });
     }
 
     @Override
